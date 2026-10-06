@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Portfolio carbon intensity calculator (v1)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDF1EF; --paper:#FAFBFA; --ink:#1C2A2E; --muted:#5C6B6E; --line:#CBD5D2;
+  --fjord:#2F5D62; --fjord-soft:#D6E4E2; --moss:#5F7F45; --amber:#9A720F; --ember:#A33B2B;
+  --warn-bg:#F6EBD3; --bad-bg:#F3DCD7;
+  --font:"Schibsted Grotesk","Helvetica Neue",Arial,sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121A1C; --paper:#1A2427; --ink:#E4ECEA; --muted:#97A6A8; --line:#2E3C3F;
+    --fjord:#7FB3B8; --fjord-soft:#24393C; --moss:#93B47A; --amber:#D9AE4A; --ember:#E07A68;
+    --warn-bg:#3A311C; --bad-bg:#3D2420;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121A1C; --paper:#1A2427; --ink:#E4ECEA; --muted:#97A6A8; --line:#2E3C3F;
+  --fjord:#7FB3B8; --fjord-soft:#24393C; --moss:#93B47A; --amber:#D9AE4A; --ember:#E07A68;
+  --warn-bg:#3A311C; --bad-bg:#3D2420;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.5;font-variant-numeric:tabular-nums}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 20px 48px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:22px}
+h1{font-size:clamp(1.6rem,3.2vw,2.3rem);line-height:1.1;font-weight:800;letter-spacing:-.02em;margin:0;max-width:24ch}
+.sub{color:var(--muted);margin:8px 0 0;max-width:64ch}
+.badge{border:1px solid var(--amber);color:var(--amber);border-radius:999px;padding:3px 12px;font-size:.85rem;font-weight:600;white-space:nowrap}
+.theme-toggle{background:none;border:1px solid var(--line);border-radius:999px;padding:4px 12px;cursor:pointer;color:var(--muted);font:inherit;font-size:.85rem}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:20px}
+h2{font-size:1.15rem;margin:0 0 4px;font-weight:700}
+.hint{color:var(--muted);font-size:.9rem;margin:0 0 12px;max-width:80ch}
+input,select,textarea,button{font:inherit;color:inherit}
+input,select,textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 9px;min-width:0}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid var(--fjord);outline-offset:2px}
+label.f{display:block;font-size:.78rem;color:var(--muted);margin-bottom:2px}
+/* settings strip */
+.settings{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;padding:12px 14px;background:var(--fjord-soft);border-radius:8px;margin-bottom:16px}
+.settings > div{min-width:130px}
+.settings .note{font-size:.82rem;color:var(--muted);flex:1 1 220px}
+/* holding rows */
+.hrow{display:grid;grid-template-columns:minmax(160px,2.2fr) 1.1fr .95fr .95fr 1.05fr .85fr 1.15fr 40px;gap:8px;align-items:end;padding:10px 0;border-bottom:1px solid var(--line)}
+.hrow.head{padding-top:0;font-size:.78rem;color:var(--muted);font-weight:600;align-items:end}
+.hrow .flag{grid-column:1 / -1;font-size:.8rem;line-height:1.35}
+.flag.warn{color:var(--amber)} .flag.bad{color:var(--ember)}
+.hrow label.f{display:none}
+@media (max-width:860px){
+  .hrow{grid-template-columns:1fr 1fr;gap:8px 10px}
+  .hrow.head{display:none}
+  .hrow label.f{display:block}
+  .hrow .name{grid-column:1 / -1}
+  .hrow .rm{grid-column:2;justify-self:end}
+}
+.icon-btn{background:none;border:1px solid transparent;border-radius:6px;padding:7px 10px;cursor:pointer;color:var(--muted)}
+.icon-btn:hover{border-color:var(--line);color:var(--ink)}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.btn{border:1px solid var(--fjord);background:var(--fjord);color:var(--paper);border-radius:6px;padding:8px 14px;font-weight:600;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--fjord)}
+details{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+summary{cursor:pointer;font-weight:600}
+code{font-size:.85em;background:var(--bg);padding:1px 5px;border-radius:4px}
+.msg{font-size:.88rem;margin-top:8px}
+/* results */
+.res-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:24px;align-items:start}
+@media (max-width:860px){.res-grid{grid-template-columns:1fr}}
+.headline{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
+.big{font-size:clamp(3rem,7.5vw,4.8rem);font-weight:800;letter-spacing:-.03em;line-height:1}
+.unit{color:var(--muted);font-size:1rem;line-height:1.35}
+.gate{display:inline-block;margin-top:10px;font-size:.88rem;font-weight:600;border-radius:6px;padding:4px 10px}
+.gate.ok{background:var(--fjord-soft);color:var(--fjord)} .gate.low{background:var(--warn-bg);color:var(--amber)}
+.ruler{position:relative;height:96px;margin:24px 6px 6px}
+.ruler .track{position:absolute;left:0;right:0;top:44px;height:10px;border-radius:5px;background:linear-gradient(90deg,var(--moss),var(--amber) 55%,var(--ember))}
+.ruler .tick{position:absolute;top:58px;font-size:.75rem;color:var(--muted);transform:translateX(-50%)}
+.ruler .dot{position:absolute;top:40px;width:18px;height:18px;margin-left:-9px;border-radius:50%;background:var(--paper);border:3px solid var(--ink)}
+.ruler .pin{position:absolute;top:0;width:2px;height:58px;margin-left:-1px;background:var(--fjord)}
+.ruler .pin span{position:absolute;top:-2px;left:6px;font-size:.8rem;font-weight:700;color:var(--fjord);white-space:nowrap}
+@media (prefers-reduced-motion: no-preference){.ruler .pin{transition:left .4s ease}}
+.meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:16px 0 4px}
+@media (max-width:520px){.meta{grid-template-columns:1fr 1fr}}
+.meta div{border-left:3px solid var(--fjord-soft);padding-left:10px}
+.meta b{display:block;font-size:1.1rem}
+.meta span{color:var(--muted);font-size:.84rem}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+.contrib th,.contrib td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:right;font-size:.9rem;vertical-align:top}
+.contrib th{color:var(--muted);font-weight:600;font-size:.8rem}
+.contrib th:first-child,.contrib td:first-child{text-align:left}
+.bar{height:6px;border-radius:3px;background:var(--fjord);margin-top:4px}
+.tag{display:inline-block;font-size:.72rem;font-weight:600;border:1px solid var(--amber);color:var(--amber);border-radius:999px;padding:0 7px;margin-left:6px;vertical-align:1px}
+.tag.red{border-color:var(--ember);color:var(--ember)}
+.other{margin-top:18px;padding:12px 14px;border:1px dashed var(--line);border-radius:8px}
+.gaps{list-style:none;padding:0;margin:8px 0 0}
+.gaps li{padding:8px 10px;border-radius:6px;margin-bottom:6px;font-size:.9rem;background:var(--warn-bg)}
+.empty{color:var(--muted);padding:26px 0;text-align:center}
+.notes ul{padding-left:20px;margin:8px 0}
+.notes li{margin-bottom:6px;max-width:78ch}
+footer{color:var(--muted);font-size:.85rem;max-width:80ch}
+.section{border-top:3px solid var(--fjord);padding-top:14px;margin-top:6px}
+.section + .section{margin-top:28px}
+.section.s3{border-top-color:var(--amber)}
+.section h3{font-size:1.05rem;margin:0 0 2px}
+.section .lead{color:var(--muted);font-size:.88rem;margin:0 0 12px}
+.denwarn{background:var(--warn-bg);border-radius:6px;padding:8px 12px;font-size:.88rem;margin:10px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Work out the carbon intensity of your fund portfolio</h1>
+      <p class="sub">Enter each fund you hold, how much you have in it, and the carbon intensity (WACI) from its factsheet or monthly report. The calculator does the rest. Nothing you type leaves this browser.</p>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span class="badge">Version 1</span>
+      <button class="theme-toggle" id="themeBtn" type="button">Theme</button>
+    </div>
+  </header>
+
+  <section class="panel" aria-labelledby="h-hold">
+    <h2 id="h-hold">Your funds</h2>
+    <p class="hint">Enter WACI exactly as the fund publishes it, as tonnes of CO2e per $1m or €1m of company revenue, and pick which one. Fill in Scope 1+2, Scope 1+2+3, or both, depending on what the fund discloses. Leave a box blank if there's no figure.</p>
+
+    <div class="settings">
+      <div><label class="f" for="cur">Amounts are in</label>
+        <select id="cur"><option value="EUR">EUR</option><option value="USD">USD</option></select></div>
+      <p class="note">Enter every amount in this currency, as your bank or broker shows it. No currency conversion is done.</p>
+    </div>
+
+    <div class="hrow head" aria-hidden="true">
+      <div>Fund name</div><div>Amount</div><div>WACI Scope 1+2</div><div>WACI Scope 1+2+3</div><div>WACI is per</div><div>Data coverage %</div><div>Figure date</div><div></div>
+    </div>
+    <div id="rows"></div>
+
+    <div class="actions">
+      <button class="btn" id="addRow" type="button">Add fund</button>
+      <button class="btn ghost" id="sample" type="button">Load example</button>
+      <button class="btn ghost" id="clear" type="button">Clear all</button>
+    </div>
+
+    <details>
+      <summary>Paste from a spreadsheet</summary>
+      <p class="hint" style="margin-top:8px">Copy rows straight from Excel, or type one fund per line separated by semicolons:<br>
+      <code>Fund name; amount; WACI 1+2; WACI 1+2+3; per (USD/EUR); data coverage %; date</code><br>
+      Example: <code>Example Global Equity Fund; 10000; 95; 620; USD; 99; 2026-08-31</code><br>
+      Only the name and amount are required. A fund name that's already listed is updated, not duplicated.</p>
+      <textarea id="paste" rows="4" aria-label="Paste funds"></textarea>
+      <div class="actions"><button class="btn ghost" id="importBtn" type="button">Import lines</button></div>
+      <div class="msg" id="importMsg" aria-live="polite"></div>
+    </details>
+  </section>
+
+  <section class="panel" aria-labelledby="h-res" aria-live="polite">
+    <h2 id="h-res">Your portfolio's carbon intensity</h2>
+    <div id="results"></div>
+  </section>
+
+  <section class="panel notes" aria-labelledby="h-meth">
+    <h2 id="h-meth">How this is calculated</h2>
+    <ul>
+      <li>Portfolio WACI = sum of (each fund's share × its WACI). Shares are rescaled over the funds that have a figure, so they add up to 100%. Portfolio coverage shows how much of your money that is.</li>
+      <li>Scope 1+2 and Scope 1+2+3 are calculated separately and never combined.</li>
+      <li>Figures are used as published. If some funds report per $1m and others per €1m of revenue, the result mixes the two and is flagged, because the same company looks roughly 15% different depending on the currency.</li>
+      <li>Data coverage is the share of each fund's own holdings that its WACI is based on, as the fund reports it. The weighted figure averages it across your funds.</li>
+      <li>Below 70% portfolio coverage, a result is marked indicative. Funds without a figure are listed, never estimated.</li>
+      <li>This aggregates figures that funds already publish. It is not a company-by-company PCAF calculation.</li>
+      <li>For information only, not investment advice.</li>
+    </ul>
+  </section>
+
+  <footer>Version 1.0. The example funds and all their figures are fictional, and match the sample Excel workbook in the docs folder. Source code and methodology: see the project README.</footer>
+</div>
+
+<script>
+const SAMPLE = [
+  {name:"Example Global Equity Fund",    amt:10000, w12:"95",  w123:"620",  denom:"USD", cov:"99",  date:"2026-08-31"},
+  {name:"Example Europe Equity Fund",    amt:6000,  w12:"80",  w123:"",     denom:"USD", cov:"100", date:"2026-08-31"},
+  {name:"Example Emerging Markets Fund", amt:4000,  w12:"260", w123:"1150", denom:"USD", cov:"95",  date:"2026-07-31"},
+  {name:"Example Clean Energy Fund",     amt:2500,  w12:"140", w123:"",     denom:"USD", cov:"92",  date:"2026-06-30"},
+  {name:"Example Bond Fund",             amt:2000,  w12:"",    w123:"",     denom:"USD", cov:"",    date:""}
+];
+const blank = () => ({name:"", amt:"", w12:"", w123:"", denom:"USD", cov:"", date:""});
+const SCOPES = [{k:"w12", label:"Scope 1+2", lim:1000, cls:""},{k:"w123", label:"Scope 1+2+3", lim:5000, cls:"s3"}];
+
+const esc = v => String(v==null?"":v).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
+function num(v){
+  if(typeof v==="number") return v;
+  let s=String(v||"").replace(/[\s\u00a0€$%]/g,"");
+  if(!s) return NaN;
+  const lc=s.lastIndexOf(","), ld=s.lastIndexOf(".");
+  if(lc>-1 && ld>-1){ s = lc>ld ? s.replace(/\./g,"").replace(",",".") : s.replace(/,/g,""); }
+  else if(lc>-1){ const after=s.length-lc-1; s = after===3 && s.indexOf(",")===lc && lc<=3 ? s.replace(",","") : s.replace(",","."); }
+  return parseFloat(s);
+}
+const isDate = d => /^\d{4}-\d{2}-\d{2}$/.test(d||"");
+const fmtDate = d => isDate(d) ? new Date(d+"T00:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}) : "No date";
+const ageDays = d => isDate(d) ? Math.floor((Date.now()-new Date(d+"T00:00:00"))/864e5) : null;
+const pct = n => (n*100).toFixed(1)+"%";
+const denText = d => d==="USD" ? "per $1m revenue" : "per €1m revenue";
+
+let rows=[], settings={cur:"EUR"};
+function save(){ try{ localStorage.setItem("waci-calc", JSON.stringify({rows,settings})); }catch(e){} }
+function load(){ try{ const s=JSON.parse(localStorage.getItem("waci-calc")||"null"); if(s&&Array.isArray(s.rows)) return s; }catch(e){} return null; }
+const money = n => new Intl.NumberFormat("en-IE",{style:"currency",currency:settings.cur,maximumFractionDigits:0}).format(n);
+
+function rowCheck(r){
+  const flags=[], amt=num(r.amt), cov=num(r.cov);
+  if(r.name && !(amt>0)) flags.push(["bad","Enter an amount above 0 to include this fund."]);
+  let any=false;
+  SCOPES.forEach(sc=>{
+    if(String(r[sc.k]).trim()==="") return;
+    any=true; const w=num(r[sc.k]);
+    if(!(w>0)) flags.push(["bad",`${sc.label} WACI must be a number above 0.`]);
+    else if(w>sc.lim) flags.push(["warn",`${sc.label} WACI looks unusually high. Check it's per $1m or €1m of revenue.`]);
+  });
+  if(String(r.cov).trim()!==""){
+    if(!(cov>0&&cov<=100)) flags.push(["bad","Data coverage must be between 0 and 100%."]);
+    else if(cov<70) flags.push(["warn","Low data coverage: this fund's WACI is based on less than 70% of its holdings."]);
+  }
+  if(any){
+    if(!isDate(r.date)) flags.push(["warn","Add the date of this figure so you can see how current it is."]);
+    else if(ageDays(r.date)>365) flags.push(["warn","This figure is over 12 months old. A newer report may be available."]);
+  }
+  return {amt, cov:(cov>0&&cov<=100)?cov:null, flags};
+}
+
+const rowsEl=document.getElementById("rows");
+function renderRows(){
+  rowsEl.innerHTML="";
+  rows.forEach((r,i)=>{
+    const d=document.createElement("div"); d.className="hrow";
+    d.innerHTML=`
+      <div class="name"><label class="f" for="n${i}">Fund name</label><input id="n${i}" data-k="name" value="${esc(r.name)}" placeholder="e.g. Example Global Equity Fund"></div>
+      <div><label class="f" for="a${i}">Amount</label><input id="a${i}" data-k="amt" inputmode="decimal" value="${esc(r.amt)}" placeholder="0"></div>
+      <div><label class="f" for="w${i}">WACI Scope 1+2</label><input id="w${i}" data-k="w12" inputmode="decimal" value="${esc(r.w12)}" placeholder="blank if none"></div>
+      <div><label class="f" for="x${i}">WACI Scope 1+2+3</label><input id="x${i}" data-k="w123" inputmode="decimal" value="${esc(r.w123)}" placeholder="blank if none"></div>
+      <div><label class="f" for="p${i}">WACI is per</label><select id="p${i}" data-k="denom"><option value="USD"${r.denom==="USD"?" selected":""}>$1m revenue</option><option value="EUR"${r.denom==="EUR"?" selected":""}>€1m revenue</option></select></div>
+      <div><label class="f" for="v${i}">Data coverage %</label><input id="v${i}" data-k="cov" inputmode="decimal" value="${esc(r.cov)}" placeholder="e.g. 98"></div>
+      <div><label class="f" for="d${i}">Figure date</label><input id="d${i}" data-k="date" type="date" value="${esc(r.date)}"></div>
+      <div class="rm"><button class="icon-btn" type="button" aria-label="Remove ${esc(r.name||"this fund")}">✕</button></div>
+      <div class="flag" id="f${i}"></div>`;
+    d.querySelectorAll("[data-k]").forEach(el=>{
+      const k=el.dataset.k, ev=(el.tagName==="SELECT"||el.type==="date")?"change":"input";
+      el.addEventListener(ev,()=>{ rows[i][k]=el.value; save(); renderFlag(i); renderResults(); });
+    });
+    d.querySelector(".rm button").addEventListener("click",()=>{ rows.splice(i,1); if(!rows.length) rows.push(blank()); update(); });
+    rowsEl.appendChild(d); renderFlag(i);
+  });
+}
+function renderFlag(i){
+  const el=document.getElementById("f"+i); if(!el) return;
+  const c=rowCheck(rows[i]);
+  el.className="flag "+(c.flags.some(f=>f[0]==="bad")?"bad":c.flags.length?"warn":"");
+  el.textContent=c.flags.map(f=>f[1]).join(" ");
+}
+function update(){ save(); renderRows(); renderResults(); }
+
+const out=document.getElementById("results");
+function sectionHTML(sc, all, total){
+  const items=all.map(x=>({...x, w:num(x[sc.k])})).filter(x=>x.w>0);
+  let h=`<div class="section ${sc.cls}"><h3>WACI ${sc.label}</h3>`;
+  if(!items.length){
+    return h+`<p class="lead">No ${sc.label} figures entered. Add them in the ${sc.label} column if your funds disclose them.</p></div>`;
+  }
+  const amt=items.reduce((s,x)=>s+x.amt,0), cov=amt/total;
+  const W=items.reduce((s,x)=>s+(x.amt/amt)*x.w,0);
+  const dens=[...new Set(items.map(x=>x.denom))];
+  const mixed=dens.length>1;
+  const unit = mixed ? "tCO2e per $1m and €1m revenue (mixed)" : "tCO2e "+denText(dens[0]);
+  const known=items.filter(x=>x.cov!=null), knownAmt=known.reduce((s,x)=>s+x.amt,0);
+  const dataCov= known.length ? known.reduce((s,x)=>s+(x.amt/knownAmt)*x.cov,0) : null;
+  const dated=items.map(x=>x.date).filter(isDate).sort(), undated=items.length-dated.length;
+  const range=dated.length?(dated[0]===dated[dated.length-1]?fmtDate(dated[0]):fmtDate(dated[0])+" to "+fmtDate(dated[dated.length-1])):"No dates";
+  const max=Math.max(60,W,...items.map(x=>x.w))*1.25;
+  const step=max>3000?1000:max>1500?500:max>600?200:max>300?100:max>150?50:max>80?20:10;
+  let ticks=""; for(let t=0;t<=max;t+=step) ticks+=`<span class="tick" style="left:${t/max*100}%">${t}</span>`;
+  const dots=items.map(x=>`<span class="dot" style="left:${x.w/max*100}%" title="${esc(x.name)}: ${x.w}"></span>`).join("");
+  h+=`<p class="lead">${items.length} of ${all.length} funds have a ${sc.label} figure.</p>
+  <div class="res-grid"><div>
+    <div class="headline"><span class="big">${W.toFixed(1)}</span><span class="unit">${unit}</span></div>
+    <span class="gate ${cov>=0.7?"ok":"low"}">${cov>=0.7?`Portfolio coverage ${pct(cov)}`:`Indicative only: portfolio coverage ${pct(cov)}, below 70%`}</span>
+    ${mixed?`<div class="denwarn">These figures mix funds reporting per $1m and per €1m of revenue. No conversion is applied, so treat the result as approximate. Results are cleanest when all funds use the same currency.</div>`:""}
+    <div class="ruler" role="img" aria-label="${sc.label} portfolio WACI ${W.toFixed(1)} shown against each fund">
+      <div class="track"></div>${ticks}${dots}
+      <div class="pin" style="left:${W/max*100}%"><span>Portfolio ${W.toFixed(1)}</span></div>
+    </div>
+    <div class="meta">
+      <div><b>${money(amt)}</b><span>of ${money(total)} included</span></div>
+      <div><b>${dataCov!=null?pct(dataCov/100):"Not reported"}</b><span>fund data coverage, weighted${known.length&&known.length<items.length?`; ${items.length-known.length} not reported`:""}</span></div>
+      <div><b>${range}</b><span>figure dates${undated?`, ${undated} undated`:""}</span></div>
+    </div>
+  </div><div>
+    <div class="scroll"><table class="contrib"><thead><tr><th>Fund</th><th>Share*</th><th>WACI</th><th>Adds</th><th>Data coverage</th><th>Date</th></tr></thead><tbody>
+    ${items.map(x=>{const sh=x.amt/amt, c=sh*x.w, old=ageDays(x.date)>365;
+      return `<tr><td>${esc(x.name)}${mixed?`<span class="tag">${x.denom==="USD"?"$":"€"}</span>`:""}<div class="bar" style="width:${(c/W*100).toFixed(0)}%"></div></td>
+      <td>${pct(sh)}</td><td>${x.w.toFixed(1)}</td><td>${c.toFixed(1)}</td>
+      <td>${x.cov!=null?x.cov.toFixed(1)+"%"+(x.cov<70?`<span class="tag red">low</span>`:""):`–<span class="tag">not reported</span>`}</td>
+      <td style="white-space:nowrap">${isDate(x.date)?fmtDate(x.date):"–"}${!isDate(x.date)?`<span class="tag">no date</span>`:old?`<span class="tag red">over 12 months</span>`:""}</td></tr>`}).join("")}
+    </tbody></table></div>
+    <p class="hint" style="margin-top:6px">*Share of the money with a ${sc.label} figure, rescaled to 100%. Adds = share × WACI; the Adds column sums to the headline.</p>
+  </div></div></div>`;
+  return h;
+}
+function renderResults(){
+  const all=rows.map(x=>{const c=rowCheck(x); return {...x, amt:c.amt, cov:c.cov};}).filter(x=>x.name.trim()&&x.amt>0);
+  const total=all.reduce((s,x)=>s+x.amt,0);
+  if(!all.length){ out.innerHTML=`<p class="empty">Add a fund with an amount to see your result, or load the example.</p>`; return; }
+  let html=SCOPES.map(sc=>sectionHTML(sc,all,total)).join("");
+  const gaps=all.filter(x=>!(num(x.w12)>0)&&!(num(x.w123)>0));
+  if(gaps.length){
+    const ga=gaps.reduce((s,x)=>s+x.amt,0);
+    html+=`<h2 style="margin-top:24px">No figure for either scope: ${money(ga)} (${pct(ga/total)})</h2><ul class="gaps">`+
+      gaps.map(x=>`<li><b>${esc(x.name)}</b>, ${money(x.amt)}. Check the fund's monthly report or factsheet, or leave it blank if the fund doesn't publish a WACI.</li>`).join("")+`</ul>`;
+  }
+  out.innerHTML=html;
+}
+
+const curEl=document.getElementById("cur");
+curEl.onchange=()=>{settings.cur=curEl.value; save(); renderResults();};
+
+document.getElementById("addRow").onclick=()=>{ rows.push(blank()); update(); const ins=rowsEl.querySelectorAll('input[data-k="name"]'); ins[ins.length-1].focus(); };
+document.getElementById("sample").onclick=()=>{ rows=SAMPLE.map(x=>({...x})); update(); };
+document.getElementById("clear").onclick=()=>{ rows=[blank()]; update(); };
+document.getElementById("importBtn").onclick=()=>{
+  const lines=document.getElementById("paste").value.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  let added=0, updated=0; const notes=[];
+  lines.forEach((l,n)=>{
+    const c=(l.includes("\t")?l.split("\t"):l.includes(";")?l.split(";"):l.split(",")).map(x=>x.trim());
+    if(!c[0] || /^fund/i.test(c[0])) return;
+    const amt=num(c[1]);
+    if(!(amt>0)){ notes.push(`Line ${n+1}: "${esc(c[1]||"")}" isn't a valid amount. Skipped.`); return; }
+    const denom=/eur|€/i.test(c[4]||"")?"EUR":"USD";
+    let date=(c[6]||""); const m=date.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/); if(m) date=`${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`; if(!isDate(date)) date="";
+    const rec={name:c[0], amt:String(amt), w12:c[2]||"", w123:c[3]||"", denom, cov:(c[5]||"").replace("%",""), date};
+    const idx=rows.findIndex(r=>r.name.trim().toLowerCase()===c[0].toLowerCase());
+    if(idx>-1){ const o=rows[idx]; rows[idx]={...o, amt:rec.amt, denom: c[4]?denom:o.denom, w12:rec.w12||o.w12, w123:rec.w123||o.w123, cov:rec.cov||o.cov, date:rec.date||o.date}; updated++; }
+    else { rows.push(rec); added++; }
+  });
+  rows=rows.filter(r=>r.name.trim()); if(!rows.length) rows=[blank()];
+  document.getElementById("paste").value="";
+  document.getElementById("importMsg").innerHTML=`<p>Added ${added}, updated ${updated}.</p>`+(notes.length?`<ul>${notes.map(x=>`<li>${x}</li>`).join("")}</ul>`:"");
+  update();
+};
+const root=document.documentElement;
+document.getElementById("themeBtn").onclick=()=>{
+  const dark=root.dataset.theme?root.dataset.theme==="dark":matchMedia("(prefers-color-scheme: dark)").matches;
+  root.dataset.theme=dark?"light":"dark"; try{localStorage.setItem("waci-v1-theme",root.dataset.theme);}catch(e){}
+};
+try{const t=localStorage.getItem("waci-v1-theme"); if(t) root.dataset.theme=t;}catch(e){}
+
+const saved=load();
+if(saved){ rows=saved.rows.length?saved.rows:[blank()]; settings={...settings,...saved.settings}; }
+else rows=SAMPLE.map(x=>({...x}));
+curEl.value=settings.cur; update();
+</script>
+</body>
+</html>
