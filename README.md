@@ -7,7 +7,7 @@ You enter each fund, how much you hold, and the WACI from its factsheet or month
 **Live demo:** https://gesono.github.io/invest_port_waci_calculator/
 
 > The demo opens with fictional example funds. Replace them with your own.
->    ![Portfolio WACI calculator demo](docs/screenshot.png)
+![Portfolio WACI calculator demo](docs/screenshot.png)
 
 ---
 
