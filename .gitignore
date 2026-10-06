@@ -1,0 +1,15 @@
+# Private or licensed fund data – never commit
+data/private/
+*.private.*
+*_private.*
+
+# Personal portfolios
+my_portfolio*
+portfolio_*.csv
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+~$*.xlsx
