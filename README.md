@@ -62,7 +62,7 @@ The CSV uses the same semicolon-separated layout as the calculator's paste/impor
 ## Project structure
 
 ```
-portfolio-waci-calculator/
+invest_port_waci_calculator/
 ├── index.html                      the calculator (single self-contained page)
 ├── engine/
 │   └── waci.py                     the same calculation in Python, fully explained
